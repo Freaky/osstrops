@@ -12,6 +12,7 @@ use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
 #[derive(Debug, Clone)]
 pub enum OsStrOps<'a> {
+    #[cfg(not(unix))]
     Str(&'a str), // can be represented as UTF-8, just delegate
     #[cfg(unix)]
     Bytes(&'a [u8]), // Unix - can work on the raw bytes safely
@@ -44,6 +45,7 @@ impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for OsStrOps<'a> {
 impl OsStrOps<'_> {
     pub fn starts_with<S: AsRef<str>>(&self, s: S) -> bool {
         match &self {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => v.starts_with(s.as_ref()),
             #[cfg(unix)]
             OsStrOps::Bytes(v) => v.starts_with(s.as_ref().as_bytes()),
@@ -56,6 +58,7 @@ impl OsStrOps<'_> {
         assert!(b <= 127);
 
         match &self {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => v.contains(b as char),
             #[cfg(unix)]
             OsStrOps::Bytes(v) => v.contains(&b),
@@ -66,6 +69,7 @@ impl OsStrOps<'_> {
 
     pub fn split_at_byte(&self, b: u8) -> (Cow<OsStr>, Option<Cow<OsStr>>) {
         match &self {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => {
                 let c = b as char;
                 let mut iter = v.splitn(2, |n| n == c);
@@ -106,6 +110,7 @@ impl OsStrOps<'_> {
 
     pub fn len(&self) -> usize {
         match &self {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => v.len(),
             #[cfg(unix)]
             OsStrOps::Bytes(v) => v.len(),
@@ -120,6 +125,7 @@ impl OsStrOps<'_> {
 
     pub fn split_at(&self, i: usize) -> (Cow<OsStr>, Cow<OsStr>) {
         match &self {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => {
                 let bits = v.split_at(i);
                 (
@@ -150,6 +156,7 @@ impl OsStrOps<'_> {
         assert!(b <= 127);
 
         match &self {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => Cow::Borrowed(v.trim_start_matches(b as char).as_ref()),
             #[cfg(unix)]
             OsStrOps::Bytes(v) => match v.iter().copied().position(|n| n != b) {
@@ -195,6 +202,7 @@ impl<'a> Iterator for OsSplit<'a> {
         let start = self.pos;
 
         match &self.val {
+            #[cfg(not(unix))]
             OsStrOps::Str(v) => {
                 for b in &v.as_bytes()[start..] {
                     self.pos += 1;
