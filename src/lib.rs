@@ -1,12 +1,10 @@
 use std::borrow::Cow;
-use std::ffi::OsStr;
+use std::ffi::{OsString, OsStr};
 use std::str;
 
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
 
-#[cfg(windows)]
-use std::ffi::OsString;
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
@@ -43,6 +41,39 @@ impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for OsStrOps<'a> {
 }
 
 impl OsStrOps<'_> {
+    pub fn as_str_lossy(&self) -> Cow<str> {
+        match &self {
+            #[cfg(not(unix))]
+            OsStrOps::Str(v) => Cow::Borrowed(v),
+            #[cfg(unix)]
+            OsStrOps::Bytes(v) => String::from_utf8_lossy(&v),
+            #[cfg(windows)]
+            OsStrOps::Wide(v) => Cow::Owned(OsString::from_wide(v).to_string_lossy().into_owned()),
+        }
+    }
+
+    pub fn as_bytes_lossy(&self) -> Cow<[u8]> {
+        match &self {
+            #[cfg(not(unix))]
+            OsStrOps::Str(v) => Cow::Borrowed(v.as_bytes()),
+            #[cfg(unix)]
+            OsStrOps::Bytes(v) => Cow::Borrowed(&v),
+            #[cfg(windows)]
+            OsStrOps::Wide(v) => Cow::Owned(OsString::from_wide(v).to_string_lossy().into_owned().into_bytes()),
+        }
+    }
+
+    pub fn into_os_string(self) -> OsString {
+        match self {
+            #[cfg(not(unix))]
+            OsStrOps::Str(v) => OsString::from(v),
+            #[cfg(unix)]
+            OsStrOps::Bytes(v) => OsStr::from_bytes(v).to_os_string(),
+            #[cfg(windows)]
+            OsStrOps::Wide(v) => OsString::from_wide(&v)
+        }
+    }
+
     pub fn starts_with<S: AsRef<str>>(&self, s: S) -> bool {
         match &self {
             #[cfg(not(unix))]
